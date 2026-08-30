@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pawan.hirejetpack.presentation.state.JobDetailViewModel
 import com.pawan.hirejetpack.presentation.state.LoginViewModel
+import com.pawan.hirejetpack.presentation.ui.analytics.AnalyticsScreen
 import com.pawan.hirejetpack.presentation.ui.jobdetail.JobDetailScreen
 import com.pawan.hirejetpack.presentation.ui.login.LoginScreen
 import com.pawan.hirejetpack.presentation.ui.main.MainScreen
@@ -62,7 +63,15 @@ fun AppNavigation() {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Main.route) { inclusive = true }
                     }
+                },
+                onAnalyticsClick = {
+                    navController.navigate(Screen.Analytics.route)
                 }
+            )
+        }
+        composable(Screen.Analytics.route) {
+            AnalyticsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         composable(

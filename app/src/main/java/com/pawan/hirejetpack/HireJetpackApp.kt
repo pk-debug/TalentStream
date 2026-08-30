@@ -4,6 +4,7 @@ import android.app.Application
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.embedding.engine.dart.DartExecutor
+import io.flutter.plugin.common.MethodChannel
 
 class HireJetpackApp : Application() {
     
@@ -18,9 +19,23 @@ class HireJetpackApp : Application() {
             DartExecutor.DartEntrypoint.createDefault()
         )
 
-        // 3. Cache the pre-warmed FlutterEngine to be used by FlutterActivity or FlutterFragment.
+        // 3. Cache the pre-warmed FlutterEngine
         FlutterEngineCache
             .getInstance()
             .put("analytics_engine_id", flutterEngine)
+
+        // 4. Setup MethodChannel for Analytics Data
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.pawan.hirejetpack/analytics")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getAnalyticsData") {
+                    val data = mapOf(
+                        "jobCount" to 1240,
+                        "topCategory" to "Mobile Development (Kotlin/Flutter)"
+                    )
+                    result.success(data)
+                } else {
+                    result.notImplemented()
+                }
+            }
     }
 }

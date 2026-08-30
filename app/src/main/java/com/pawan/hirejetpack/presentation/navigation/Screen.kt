@@ -18,6 +18,7 @@ package com.pawan.hirejetpack.presentation.navigation
 sealed class Screen(val route: String) {
     object Login : Screen("login_screen")
     object Main : Screen("main_screen")
+    object Analytics : Screen("analytics_screen")
 
     object JobDetail : Screen("job_detail_screen/{jobId}") {
         fun createRoute(jobId: String) = "job_detail_screen/$jobId"

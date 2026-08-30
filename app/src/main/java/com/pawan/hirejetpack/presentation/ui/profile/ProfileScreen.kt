@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -48,7 +51,8 @@ import com.pawan.hirejetpack.presentation.ui.components.InitialsAvatar
 @Composable
 fun ProfileScreenContent(
     viewModel: LoginViewModel,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onAnalyticsClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val user = (uiState as? LoginUiState.Success)?.user
@@ -109,6 +113,22 @@ fun ProfileScreenContent(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onAnalyticsClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary
+            )
+        ) {
+            Icon(androidx.compose.material.icons.Icons.Default.TrendingUp, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Market Insights (Flutter)")
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         OutlinedButton(
             onClick = onLogout,

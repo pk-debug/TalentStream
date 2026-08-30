@@ -50,7 +50,8 @@ import com.pawan.hirejetpack.presentation.ui.savedjobs.SavedJobsScreen
 fun MainScreen(
     loginViewModel: LoginViewModel,
     onJobClick: (String) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onAnalyticsClick: () -> Unit
 ) {
     val homeViewModel: HomeViewModel = viewModel()
     val savedJobsViewModel: SavedJobsViewModel = viewModel()
@@ -94,7 +95,8 @@ fun MainScreen(
 
                 BottomNavItem.Profile -> ProfileScreenContent(
                     viewModel = loginViewModel,
-                    onLogout = onLogout
+                    onLogout = onLogout,
+                    onAnalyticsClick = onAnalyticsClick
                 )
             }
         }
