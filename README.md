@@ -1,4 +1,4 @@
-# HireJetpack — Jetpack Compose Job App
+# Talent Stream — Jetpack Compose Job App
 
 A modern, single-activity Android application built with **Jetpack Compose**, implementing **MVVM Architecture** and **OOP principles**. The app features a **Login Screen**, a **Home Screen** with a **navigation drawer** and a **job listing feed**, and a redesigned **Profile Screen** — all connected with **type-safe navigation**.
 
