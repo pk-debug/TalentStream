@@ -4,7 +4,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.pawan.hirejetpack.data.ThemeRepository
 import com.pawan.hirejetpack.presentation.navigation.AppNavigation
+import com.pawan.hirejetpack.presentation.ui.theme.HirejetpackTheme
 
 // ============================================================================
 // MAIN ACTIVITY ENTRY POINT
@@ -24,7 +28,9 @@ class MainActivity : ComponentActivity() {
          * replacing traditional XML layout inflation (`setContentView`).
          */
         setContent {
-            MaterialTheme {
+            val isDarkMode by ThemeRepository.isDarkMode.collectAsState()
+            
+            HirejetpackTheme(darkTheme = isDarkMode) {
                 AppNavigation()
             }
         }
