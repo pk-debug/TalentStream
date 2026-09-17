@@ -2,6 +2,7 @@ package com.pawan.hirejetpack.presentation.ui.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AssistChip
@@ -21,6 +23,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,21 +35,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
+import com.pawan.hirejetpack.data.ThemeRepository
 import com.pawan.hirejetpack.presentation.state.LoginUiState
 import com.pawan.hirejetpack.presentation.state.LoginViewModel
 import com.pawan.hirejetpack.presentation.ui.components.InitialsAvatar
 
 /**
  * [ProfileScreenContent] — the Profile tab's body: gradient header +
- * info card + logout button.
- *
- * Staff note: same reasoning as [com.pawan.hirejetpack.presentation.ui.home.HomeScreenContent]
- * — no Scaffold/TopAppBar here; MainScreen supplies both. There's also no
- * `onBack` parameter anymore. A bottom-nav tab isn't something you "back"
- * out of, it's something you switch away from by tapping another tab —
- * removing that parameter isn't just cleanup, it reflects that this
- * screen's navigation semantics genuinely changed when it moved from a
- * pushed destination to a tab.
+ * info card + theme toggle + logout button.
  */
 @Composable
 fun ProfileScreenContent(
@@ -55,10 +51,11 @@ fun ProfileScreenContent(
     onAnalyticsClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isDarkMode by ThemeRepository.isDarkMode.collectAsState()
     val user = (uiState as? LoginUiState.Success)?.user
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Gradient header with avatar
+        // ... (Gradient header remains the same)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -109,11 +106,32 @@ fun ProfileScreenContent(
                 ProfileInfoRow(label = "Email", value = user?.email ?: "N/A")
                 Spacer(modifier = Modifier.height(14.dp))
                 ProfileInfoRow(label = "Role", value = user?.role ?: "N/A")
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                // Dark Mode Toggle
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Dark Mode",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Switch(
+                        checked = isDarkMode,
+                        onCheckedChange = { ThemeRepository.toggleDarkMode() }
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
+        
+        // ... (rest of the buttons)
         Button(
             onClick = onAnalyticsClick,
             modifier = Modifier
