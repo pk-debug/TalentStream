@@ -16,5 +16,7 @@ data class HomeUiState(
     val jobs: List<Job> = emptyList(),
     val searchQuery: String = "",
     val bookmarkedIds: Set<String> = emptySet(),
+    val selectedTags: Set<String> = emptySet(),
+    val availableTags: List<String> = emptyList(),
     val isLoading: Boolean = false
 )
