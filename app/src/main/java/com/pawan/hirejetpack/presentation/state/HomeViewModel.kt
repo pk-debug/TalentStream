@@ -32,26 +32,50 @@ class HomeViewModel(
 ) : ViewModel() {
 
     private val allJobs: List<Job> = JobRepository.getJobs()
+    private val availableTags: List<String> = allJobs.flatMap { it.tags }.distinct().sorted()
 
     private val _searchQuery = MutableStateFlow("")
+    private val _selectedTags = MutableStateFlow<Set<String>>(emptySet())
+    private val _recentSearches = MutableStateFlow<List<String>>(emptyList())
 
     val uiState: StateFlow<HomeUiState> = combine(
         _searchQuery.debounce(300).distinctUntilChanged(),
+        _selectedTags,
         bookmarkRepository.bookmarkedIds
-    ) { query, bookmarkedIds ->
-        buildUiState(query = query, bookmarkedIds = bookmarkedIds)
+    ) { query, selectedTags, bookmarkedIds ->
+        buildUiState(query = query, selectedTags = selectedTags, bookmarkedIds = bookmarkedIds)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = HomeUiState(jobs = allJobs)
+        initialValue = HomeUiState(jobs = allJobs, availableTags = availableTags)
     )
+
+    val recentSearches: StateFlow<List<String>> = _recentSearches
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
+        if (query.isNotBlank() && query !in _recentSearches.value) {
+            // Logic to add to history could be here or on "Enter" / selection
+            // For now, let's just update the query
+        }
+    }
+
+    fun onSearchTriggered(query: String) {
+        if (query.isNotBlank()) {
+            val current = _recentSearches.value.toMutableList()
+            current.remove(query)
+            current.add(0, query)
+            _recentSearches.value = current.take(5)
+        }
     }
 
     fun onClearSearch() {
         _searchQuery.value = ""
+    }
+
+    fun toggleTag(tag: String) {
+        val current = _selectedTags.value
+        _selectedTags.value = if (tag in current) current - tag else current + tag
     }
 
     /**
@@ -68,18 +92,30 @@ class HomeViewModel(
         }
     }
 
-    private fun buildUiState(query: String, bookmarkedIds: Set<String>): HomeUiState {
-        val filtered = if (query.isBlank()) {
-            allJobs
-        } else {
-            allJobs.filter { job ->
+    private fun buildUiState(
+        query: String,
+        selectedTags: Set<String>,
+        bookmarkedIds: Set<String>
+    ): HomeUiState {
+        val filtered = allJobs.filter { job ->
+            val matchesQuery = if (query.isBlank()) true else {
                 job.title.contains(query, ignoreCase = true) ||
                         job.company.contains(query, ignoreCase = true) ||
                         job.location.contains(query, ignoreCase = true) ||
                         job.tags.any { it.contains(query, ignoreCase = true) }
             }
+            val matchesTags = if (selectedTags.isEmpty()) true else {
+                selectedTags.any { tag -> job.tags.contains(tag) }
+            }
+            matchesQuery && matchesTags
         }
-        return HomeUiState(jobs = filtered, searchQuery = query, bookmarkedIds = bookmarkedIds)
+        return HomeUiState(
+            jobs = filtered,
+            searchQuery = query,
+            bookmarkedIds = bookmarkedIds,
+            selectedTags = selectedTags,
+            availableTags = availableTags
+        )
     }
 }
 
