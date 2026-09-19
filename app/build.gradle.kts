@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.pawan.hirejetpack"
-    compileSdk = 37
+    compileSdk = 36
 
 
     defaultConfig {
