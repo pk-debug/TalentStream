@@ -8,6 +8,7 @@ subprojects {
         if (project.extensions.findByName("android") != null) {
             val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
             android.ndkVersion = "27.0.12077973"
+            android.buildToolsVersion = "36.0.0"
         }
     }
 }
