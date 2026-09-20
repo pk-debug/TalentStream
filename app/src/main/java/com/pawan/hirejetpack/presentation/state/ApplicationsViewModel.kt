@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * [ApplicationsViewModel] — the Applications tab's state, combining TWO
@@ -17,20 +18,24 @@ import kotlinx.coroutines.flow.stateIn
  * bookmarked (so the same [com.pawan.hirejetpack.presentation.ui.home.JobCard]
  * can render correctly here too).
  *
- * Staff note: this is the same [combine] pattern as [HomeViewModel],
- * just with two data-layer flows instead of one data-layer flow plus one
- * local search flow. Once you've used `combine` once, recognizing "I have
- * two independent reactive inputs feeding one screen" becomes the trigger
- * for reaching for it again — that's the actual skill, more than the
- * operator itself.
+ * Staff note — the constructor changed from "no parameters" to
+ * `(bookmarkRepository: BookmarkRepository)`. That single change is the
+ * whole point of today's feature: this class now depends on an
+ * INTERFACE, supplied from outside, instead of reaching out to a global
+ * `object` singleton by name. Nothing else about this class's logic
+ * changed — `combine` and `stateIn` still work exactly as before, because
+ * [BookmarkRepository.bookmarkedIds] is still just a `Flow<Set<String>>`
+ * either way.
  */
-class ApplicationsViewModel : ViewModel() {
+class ApplicationsViewModel(
+    private val bookmarkRepository: BookmarkRepository
+) : ViewModel() {
 
     private val allJobs: List<Job> = JobRepository.getJobs()
 
     val uiState: StateFlow<ApplicationsUiState> = combine(
         ApplicationsRepository.appliedJobIds,
-        BookmarkRepository.bookmarkedIds
+        bookmarkRepository.bookmarkedIds
     ) { appliedIds, bookmarkedIds ->
         ApplicationsUiState(
             jobs = allJobs.filter { it.id in appliedIds },
@@ -43,6 +48,8 @@ class ApplicationsViewModel : ViewModel() {
     )
 
     fun toggleBookmark(jobId: String) {
-        BookmarkRepository.toggleBookmark(jobId)
+        viewModelScope.launch {
+            bookmarkRepository.toggleBookmark(jobId)
+        }
     }
 }

@@ -36,7 +36,8 @@ import kotlin.time.Duration.Companion.milliseconds
  * still open (e.g. after backgrounding and returning).
  */
 class JobDetailViewModel(
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val bookmarkRepository: BookmarkRepository
 ) : ViewModel() {
 
     private val jobId: String? = savedStateHandle["jobId"]
@@ -50,7 +51,7 @@ class JobDetailViewModel(
     init {
         if (job != null) {
             viewModelScope.launch {
-                BookmarkRepository.bookmarkedIds.collect { bookmarkedIds ->
+                bookmarkRepository.bookmarkedIds.collect { bookmarkedIds ->
                     val current = _uiState.value
                     if (current is JobDetailUiState.Found) {
                         _uiState.value = current.copy(isBookmarked = job.id in bookmarkedIds)
@@ -90,6 +91,10 @@ class JobDetailViewModel(
     }
 
     fun toggleBookmark() {
-        job?.let { BookmarkRepository.toggleBookmark(it.id) }
+        job?.let {
+            viewModelScope.launch {
+                bookmarkRepository.toggleBookmark(it.id)
+            }
+        }
     }
 }

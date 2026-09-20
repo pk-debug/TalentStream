@@ -9,24 +9,28 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
  * [SavedJobsViewModel] — derives the Saved tab's list purely from
  * [BookmarkRepository], with no local mutable state of its own.
  *
- * Staff note: notice there's no `_uiState` `MutableStateFlow` here, unlike
- * every other ViewModel in this app. It isn't needed — this screen's
- * ENTIRE output is a pure function of one upstream flow
- * (`bookmarkedIds -> filter allJobs`), so `.map { }.stateIn { }` covers
- * it completely. Reaching for a private mutable backing field out of
- * habit, when a `map`/`combine` chain can express the whole screen,
- * creates a second place the same information could live — avoid it.
+ * Staff note — the constructor changed from "no parameters" to
+ * `(bookmarkRepository: BookmarkRepository)`. That single change is the
+ * whole point of today's feature: this class now depends on an
+ * INTERFACE, supplied from outside, instead of reaching out to a global
+ * `object` singleton by name. Nothing else about this class's logic
+ * changed — `map` and `stateIn` still work exactly as before, because
+ * [BookmarkRepository.bookmarkedIds] is still just a `Flow<Set<String>>`
+ * either way.
  */
-class SavedJobsViewModel : ViewModel() {
+class SavedJobsViewModel(
+    private val bookmarkRepository: BookmarkRepository
+) : ViewModel() {
 
     private val allJobs: List<Job> = JobRepository.getJobs()
 
-    val uiState: StateFlow<SavedJobsUiState> = BookmarkRepository.bookmarkedIds
+    val uiState: StateFlow<SavedJobsUiState> = bookmarkRepository.bookmarkedIds
         .map { bookmarkedIds ->
             SavedJobsUiState(jobs = allJobs.filter { it.id in bookmarkedIds })
         }
@@ -37,6 +41,8 @@ class SavedJobsViewModel : ViewModel() {
         )
 
     fun toggleBookmark(jobId: String) {
-        BookmarkRepository.toggleBookmark(jobId)
+        viewModelScope.launch {
+            bookmarkRepository.toggleBookmark(jobId)
+        }
     }
 }
