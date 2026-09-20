@@ -1,5 +1,8 @@
 package com.pawan.hirejetpack.data.local
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
 /**
  * [BookmarkEntity] — Room's on-disk row shape for "this job id is
  * bookmarked."
