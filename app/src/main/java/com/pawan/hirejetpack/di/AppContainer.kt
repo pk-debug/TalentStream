@@ -24,9 +24,13 @@ import com.pawan.hirejetpack.data.local.AppDatabase
  * is — is what separates "I've heard of DI" from "I understand DI" in an
  * interview.
  */
-class AppContainer(context: Context) {
+class AppContainer(private val context: Context) {
 
-    private val database: AppDatabase = AppDatabase.getInstance(context)
+    val database: AppDatabase by lazy {
+        AppDatabase.getInstance(context)
+    }
 
-    val bookmarkRepository: BookmarkRepository = RoomBookmarkRepository(database.bookmarkDao())
+    val bookmarkRepository: BookmarkRepository by lazy {
+        RoomBookmarkRepository(database.bookmarkDao())
+    }
 }

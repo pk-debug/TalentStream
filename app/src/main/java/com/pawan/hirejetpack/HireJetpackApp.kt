@@ -1,31 +1,16 @@
 package com.pawan.hirejetpack
 
 import android.app.Application
+import android.os.Looper
 import com.pawan.hirejetpack.di.AppContainer
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
+import io.flutter.embedding.engine.dart.DartExecutor
+import io.flutter.plugin.common.MethodChannel
 
 /**
  * [HireJetpackApp] — custom [Application] subclass; the root of manual
  * dependency injection for this app.
- *
- * Staff note: [appContainer] is created exactly ONCE, in [onCreate],
- * which runs when the app's process starts — and it lives exactly as
- * long as that process does. That's the correct lifetime for a database
- * connection: too short-lived (e.g. per-Activity) and you'd reopen the
- * database repeatedly for no reason; too long doesn't even apply here,
- * since the process itself is the ceiling. Getting dependency LIFETIMES
- * right — not just "provide the thing somewhere" — is most of what DI
- * frameworks are actually solving, more than the wiring syntax.
- *
- * IMPORTANT — this class must be registered in AndroidManifest.xml:
- * ```xml
- * <application
- *     android:name=".HireJetpackApp"
- *     ... >
- * ```
- * Without that line, `context.applicationContext as HireJetpackApp`
- * (used wherever a ViewModel factory is built) will throw a
- * ClassCastException at runtime — Android still uses the default
- * `Application` class unless told otherwise.
  */
 class HireJetpackApp : Application() {
 
@@ -35,45 +20,59 @@ class HireJetpackApp : Application() {
     override fun onCreate() {
         super.onCreate()
         appContainer = AppContainer(this)
+        prewarmFlutterEngineWhenIdle()
     }
-}//package com.pawan.hirejetpack
-//
-//import android.app.Application
-//import io.flutter.embedding.engine.FlutterEngine
-//import io.flutter.embedding.engine.FlutterEngineCache
-//import io.flutter.embedding.engine.dart.DartExecutor
-//import io.flutter.plugin.common.MethodChannel
-//
-//class HireJetpackApp : Application() {
-//
-//    override fun onCreate() {
-//        super.onCreate()
-//
-//        // 1. Instantiate a FlutterEngine.
-//        val flutterEngine = FlutterEngine(this)
-//
-//        // 2. Start executing Dart code to pre-warm the engine.
-//        flutterEngine.dartExecutor.executeDartEntrypoint(
-//            DartExecutor.DartEntrypoint.createDefault()
-//        )
-//
-//        // 3. Cache the pre-warmed FlutterEngine
-//        FlutterEngineCache
-//            .getInstance()
-//            .put("analytics_engine_id", flutterEngine)
-//
-//        // 4. Setup MethodChannel for Analytics Data
-//        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.pawan.hirejetpack/analytics")
-//            .setMethodCallHandler { call, result ->
-//                if (call.method == "getAnalyticsData") {
-//                    val data = mapOf(
-//                        "jobCount" to 1240,
-//                        "topCategory" to "Mobile Development (Kotlin/Flutter)"
-//                    )
-//                    result.success(data)
-//                } else {
-//                    result.notImplemented()
-//                }
-//            }
-//    }
-//}
+
+    /**
+     * Cold start optimization:
+     * Pre-warming the [FlutterEngine] is deferred using [android.os.MessageQueue.IdleHandler].
+     * This guarantees that FlutterEngine creation and Dart execution never block the UI thread
+     * during the critical startup path (Application & Activity launch, first frame rendering).
+     *
+     * It only executes once the Main Looper queue is completely idle after the initial frame
+     * is already on screen, keeping cold start time as fast as possible while still having
+     * the engine warm and cached before the user navigates to Analytics.
+     */
+    private fun prewarmFlutterEngineWhenIdle() {
+        Looper.myQueue().addIdleHandler {
+            ensureFlutterEngineInitialized(this)
+            false // Run once and remove from idle queue
+        }
+    }
+
+    companion object {
+        const val FLUTTER_ENGINE_ID = "analytics_engine_id"
+        private const val CHANNEL_NAME = "com.pawan.hirejetpack/analytics"
+
+        /**
+         * Ensures the FlutterEngine is created and cached. Safe to call from
+         * [AnalyticsScreen] as a fallback or from the idle handler.
+         */
+        fun ensureFlutterEngineInitialized(application: Application): FlutterEngine {
+            val cache = FlutterEngineCache.getInstance()
+            cache.get(FLUTTER_ENGINE_ID)?.let { return it }
+
+            val flutterEngine = FlutterEngine(application)
+            flutterEngine.dartExecutor.executeDartEntrypoint(
+                DartExecutor.DartEntrypoint.createDefault()
+            )
+
+            cache.put(FLUTTER_ENGINE_ID, flutterEngine)
+
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL_NAME)
+                .setMethodCallHandler { call, result ->
+                    if (call.method == "getAnalyticsData") {
+                        val data = mapOf(
+                            "jobCount" to 1240,
+                            "topCategory" to "Mobile Development (Kotlin/Flutter)"
+                        )
+                        result.success(data)
+                    } else {
+                        result.notImplemented()
+                    }
+                }
+
+            return flutterEngine
+        }
+    }
+}

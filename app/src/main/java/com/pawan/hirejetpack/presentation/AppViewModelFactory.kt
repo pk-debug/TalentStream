@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewmodel.CreationExtras
@@ -26,8 +27,7 @@ fun appViewModelFactory(bookmarkRepository: BookmarkRepository): ViewModelProvid
         initializer { SavedJobsViewModel(bookmarkRepository) }
         initializer { ApplicationsViewModel(bookmarkRepository) }
         initializer {
-            // Use SavedStateHandle.createHandle(CreationExtras)
-            val savedStateHandle = SavedStateHandle.createHandle(this)
+            val savedStateHandle = this.createSavedStateHandle()
             JobDetailViewModel(
                 savedStateHandle = savedStateHandle,
                 bookmarkRepository = bookmarkRepository

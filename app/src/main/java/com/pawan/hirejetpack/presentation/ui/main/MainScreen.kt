@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pawan.hirejetpack.presentation.rememberAppViewModelFactory
 import com.pawan.hirejetpack.presentation.state.ApplicationsViewModel
 import com.pawan.hirejetpack.presentation.state.HomeViewModel
 import com.pawan.hirejetpack.presentation.state.LoginViewModel
@@ -53,9 +54,10 @@ fun MainScreen(
     onLogout: () -> Unit,
     onAnalyticsClick: () -> Unit
 ) {
-    val homeViewModel: HomeViewModel = viewModel()
-    val savedJobsViewModel: SavedJobsViewModel = viewModel()
-    val applicationsViewModel: ApplicationsViewModel = viewModel()
+    val factory = rememberAppViewModelFactory()
+    val homeViewModel: HomeViewModel = viewModel(factory = factory)
+    val savedJobsViewModel: SavedJobsViewModel = viewModel(factory = factory)
+    val applicationsViewModel: ApplicationsViewModel = viewModel(factory = factory)
 
     var selectedTab by remember { mutableStateOf(BottomNavItem.Home) }
 

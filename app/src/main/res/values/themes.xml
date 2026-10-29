@@ -2,4 +2,11 @@
 <resources>
 
     <style name="Theme.Hirejetpack" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- Starting Splash Theme: ensures zero-latency visual startup with no blank frame flicker -->
+    <style name="Theme.Hirejetpack.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@android:color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.Hirejetpack</item>
+    </style>
 </resources>

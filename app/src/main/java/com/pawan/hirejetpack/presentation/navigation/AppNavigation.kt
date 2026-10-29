@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.pawan.hirejetpack.presentation.rememberAppViewModelFactory
 import com.pawan.hirejetpack.presentation.state.JobDetailViewModel
 import com.pawan.hirejetpack.presentation.state.LoginViewModel
 import com.pawan.hirejetpack.presentation.ui.analytics.AnalyticsScreen
@@ -80,7 +81,8 @@ fun AppNavigation() {
         ) {
             // No need to read the argument here — JobDetailViewModel pulls
             // it from its injected SavedStateHandle instead.
-            val jobDetailViewModel: JobDetailViewModel = viewModel()
+            val factory = rememberAppViewModelFactory()
+            val jobDetailViewModel: JobDetailViewModel = viewModel(factory = factory)
             JobDetailScreen(
                 viewModel = jobDetailViewModel,
                 onBack = { navController.popBackStack() }
