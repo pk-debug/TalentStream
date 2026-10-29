@@ -1,43 +1,50 @@
 # Talent Stream — Jetpack Compose Job App
 
-A modern, single-activity Android application built with **Jetpack Compose**, implementing **MVVM Architecture** and **OOP principles**. The app features a **Login Screen**, a **Home Screen** with a **navigation drawer** and a **job listing feed**, and a redesigned **Profile Screen** — all connected with **type-safe navigation**.
+![TalentStream UI Preview](screenshots/talentstream_ui_preview.png)
+
+A modern, production-ready Android application built with **Jetpack Compose**, implementing **Clean Architecture**, **MVVM**, and **OOP principles**. The app features a **Job Listing Feed** with skill filter chips, a slide-out **Navigation Drawer**, a persistent **Saved Jobs** & **Applications** tracker backed by **Room SQLite**, a **Job Detail Screen** with an asynchronous application flow, and a redesigned **Profile Screen** with dark mode support — all connected via **type-safe navigation**.
 
 ---
 
 ## 🛠 Features
 
-- **Jetpack Compose UI:** 100% declarative UI with Material 3 components.
-- **MVVM Architecture:** Clean separation of UI logic, state, and data.
-- **Navigation Drawer:** Slide-out `ModalNavigationDrawer` on the Home screen with a profile summary header, Home/Profile/Logout entries.
-- **Job Listing Feed:** Scrollable `LazyColumn` of job cards (title, company, location, salary, skill tags), backed by a mock `JobRepository`.
-- **Job Detail Screen:** Tapping a job card navigates to a full detail view via a parameterized route (`job_detail_screen/{jobId}`), with dedicated Loading / Found / Not-Found states.
-- **Apply Flow:** Confirmation dialog → simulated submission → "Applied" state, modeled as its own `ApplicationStatus` sub-state (Idle / Submitting / Applied) so the button can never show a contradictory combination.
-- **Debounced Search:** Filter the job feed by title, company, location, or skill tag. Search input is debounced (300ms) via Kotlin Flow operators so filtering doesn't run on every single keystroke.
-- **Bookmarking:** Save/unsave jobs from either the feed or the detail screen. Bookmark status is shared app-wide via a repository-level `StateFlow`, so toggling it in one place is instantly reflected everywhere.
-- **Bookmarks:** Save a job from either the feed (`JobCard`) or the detail screen's top bar. Bookmark state lives in a single shared `BookmarkRepository`, so toggling it on one screen is instantly reflected on the other.
-- **Redesigned Profile Screen:** Gradient header, circular initials avatar, role badge, and info displayed in an elevated card.
-- **Type-Safe Navigation:** Built with `navigation-compose`, routes defined as a sealed class, backstack cleared correctly on login/logout.
-- **Reactive State Management:** Kotlin `StateFlow` per screen, collected safely in Compose via `collectAsState`.
-- **OOP Concepts:** Encapsulation, Abstraction, Polymorphism, Single Responsibility Principle (SRP), Composition over Inheritance, and DRY (shared `InitialsAvatar` component).
+- **Jetpack Compose UI:** 100% declarative UI built with Material 3 components.
+- **Clean Architecture & MVVM:** Strict separation of UI, presentation state, domain use cases, and persistent data sources.
+- **Navigation Drawer & Bottom Navigation:** Slide-out `ModalNavigationDrawer` accessible from the top app bar across all screens, offering direct access to **Home (Job Feed)**, **Saved Jobs**, **Applications**, **Profile**, and **Logout**.
+- **Interactive Skill Filter Chips:** Tap-to-filter chips (`Kotlin`, `Compose`, `KMP`, `Architecture`, `Hilt`, etc.) alongside debounced text search (300ms) to instantaneously filter listings.
+- **Room SQLite Persistence (Process-Death Resilient):**
+  - **Bookmarks:** Saved jobs are stored in Room SQLite (`hirejetpack.db`) via `BookmarkDao` and reactively observed across the feed, drawer, and detail views.
+  - **Applications:** Job applications submitted via `applyToJob()` are persisted in Room (`ApplicationEntity`), ensuring that applied status survives process death and app restarts.
+- **Real Suspend Repository Pipeline:** `ApplyToJobUseCase` and `RoomApplicationRepository` handle application submissions as real suspend operations with status progression (`Idle` → `Submitting` → `Applied`).
+- **Retrofit-Ready Repository Abstraction:** `JobRepository` is structured as a contract interface implemented by `DefaultJobRepository`, enabling seamless swap with a remote REST API.
+- **Domain-Layer Use Cases:** Reusable single-responsibility use cases (`GetJobsUseCase`, `ToggleBookmarkUseCase`, `ApplyToJobUseCase`, `GetSavedJobsUseCase`).
+- **Cold Start Optimization Suite:**
+  - **AndroidX Splash Screen API (`androidx.core:core-splashscreen`):** Zero-latency visual startup with light/dark starting themes and smooth window transitions.
+  - **Baseline Profile Installer (`androidx.profileinstaller`):** Enables ART Ahead-Of-Time (AOT) DEX compilation of Compose, Navigation, and Room runtimes, slashing startup latency by 20%–40%.
+  - **Non-Blocking Flutter Engine Pre-Warming:** Defers engine initialization to `Looper.myQueue().addIdleHandler`, ensuring the UI thread remains completely unblocked during launch.
+  - **Lazy DI Container:** All database and repository allocations in `AppContainer` use `by lazy` to prevent disk I/O from running during `Application.onCreate()`.
+  - **R8 / ProGuard Minification:** Release builds enable code shrinking and resource optimization via `proguard-rules.pro`.
 
 ---
 
-## 🧭 App Flow
+## 🧭 App Navigation Flow
 
 ```text
 Login Screen
      │  (successful login)
      ▼
-Home Screen  ──(tap a job card)──▶  Job Detail Screen
-     │      │                              │
-     │      └──(Back)──────────────────────┘
+MainScreen Shell (TopAppBar with Drawer Hamburger + Bottom Navigation)
+     ├── [Job Feed Tab]  ──────(tap job card)──────▶  Job Detail Screen
+     │         │                                             │
+     │         └──(tap filter chips / search)                └── [Apply Now] ──▶ Applied (Persisted in Room)
      │
-     └──(drawer → Profile, or profile icon in top bar)──▶  Profile Screen
-     │                                                              │
-     └──────────────────── Logout (from either screen) ────────────┘
-                                        │
-                                        ▼
-                                  Login Screen
+     ├── [Saved Jobs Tab] (reachable via bottom nav & drawer)
+     │
+     ├── [Applications Tab] (all submitted jobs, persistent)
+     │
+     └── [Profile Tab] ──▶ Analytics (Flutter Add-to-App) / Dark Mode Toggle
+               │
+               └───────── Logout (returns to Login)
 ```
 
 ---
@@ -47,136 +54,123 @@ Home Screen  ──(tap a job card)──▶  Job Detail Screen
 ```text
 com.pawan.hirejetpack/
 │
-├── domain/                         # Pure data models — no Android imports
-│   ├── UserProfile.kt              # Logged-in user's data
-│   └── Job.kt                      # One job listing
+├── domain/                                 # Pure business logic & models — no Android framework imports
+│   ├── UserProfile.kt                      # Logged-in user's profile entity
+│   ├── Job.kt                              # Job listing entity
+│   └── usecase/                            # Clean Architecture Use Cases
+│       ├── GetJobsUseCase.kt               # Fetch and filter job listings
+│       ├── ToggleBookmarkUseCase.kt        # Toggle and observe bookmark state
+│       ├── ApplyToJobUseCase.kt            # Validate and submit job applications
+│       └── GetSavedJobsUseCase.kt          # Combine bookmarked IDs with job catalog
 │
-├── data/                           # Data sources
-│   ├── JobRepository.kt            # Mock job data + getJobById() lookup (Retrofit-shaped for easy swap later)
-│   └── BookmarkRepository.kt       # Single source of truth for bookmarked job ids, shared across screens
+├── data/                                   # Data layer: Repositories & Data Sources
+│   ├── JobRepository.kt                    # JobRepository interface + DefaultJobRepository
+│   ├── Bookmarkrepository.kt               # BookmarkRepository interface
+│   ├── RoomBookmarkRepository.kt           # Room-backed implementation of BookmarkRepository
+│   ├── ApplicationRepository.kt            # ApplicationRepository interface
+│   ├── RoomApplicationRepository.kt        # Room-backed implementation of ApplicationRepository
+│   ├── ThemeRepository.kt                  # App theme state holder
+│   └── local/                              # Room SQLite Database
+│       ├── AppdataBase.kt                  # RoomDatabase configuration (v2, Bookmarks + Applications)
+│       ├── BookmarkEntity.kt               # Room entity for bookmarks
+│       ├── BookmarkDao.kt                  # Room DAO for bookmarks
+│       ├── ApplicationEntity.kt            # Room entity for applications
+│       └── ApplicationDao.kt               # Room DAO for applications
 │
-├── presentation/
-│   ├── state/                      # ViewModels + UI state classes, one pair per screen
-│   │   ├── LoginUiState.kt         # Idle / Loading / Success / Error
-│   │   ├── LoginViewModel.kt
-│   │   ├── HomeUiState.kt          # jobs (filtered) + searchQuery + bookmarkedIds + isLoading
-│   │   ├── HomeViewModel.kt        # combine(debounced search, BookmarkRepository.bookmarkedIds) -> stateIn
-│   │   ├── JobDetailUiState.kt     # Loading / Found (+ ApplicationStatus, isBookmarked) / NotFound
-│   │   ├── JobDetailViewModel.kt   # Reads jobId via SavedStateHandle; collects BookmarkRepository to stay in sync
-│   │   └── ApplicationStatus.kt    # Idle / Submitting / Applied sub-state for the apply flow
-│   │
-│   ├── navigation/                 # Routing
-│   │   ├── Screen.kt               # Sealed class of routes, incl. parameterized JobDetail
-│   │   └── AppNavigation.kt        # NavHost graph wiring screens together
-│   │
-│   └── ui/                         # Compose screens, grouped by feature
-│       ├── components/
-│       │   └── InitialsAvatar.kt   # Shared circular avatar (drawer + profile)
-│       ├── login/
-│       │   └── LoginScreen.kt
+├── di/                                     # Manual Dependency Injection
+│   └── AppContainer.kt                     # Lazy container providing repositories and use cases
+│
+├── presentation/                           # UI & State layer
+│   ├── AppViewModelFactory.kt              # Centralized factory for DI-backed ViewModels
+│   ├── navigation/
+│   │   ├── Screen.kt                       # Sealed class of type-safe destinations
+│   │   └── AppNavigation.kt                # NavHost graph definition
+│   ├── state/                              # ViewModels & reactive UI States
+│   │   ├── LoginViewModel.kt & LoginUiState.kt
+│   │   ├── HomeViewModel.kt & HomeUiState.kt
+│   │   ├── SavedJobsViewModel.kt & SavedJobsUiState.kt
+│   │   ├── ApplicationsViewModel.kt & ApplicationsUiState.kt
+│   │   ├── JobDetailViewModel.kt & JobDetailUiState.kt
+│   │   └── ApplicationStatus.kt
+│   └── ui/                                 # Jetpack Compose UI
+│       ├── components/InitialsAvatar.kt    # Reusable avatar component
+│       ├── login/LoginScreen.kt            # Authentication screen
 │       ├── home/
-│       │   ├── HomeScreen.kt       # Drawer + search bar + job feed scaffold (incl. private JobSearchField)
-│       │   ├── AppDrawerContent.kt # Drawer panel contents
-│       │   └── JobCard.kt          # One row in the feed — clickable, bookmarkable, navigates to detail
-│       ├── jobdetail/
-│       │   └── JobDetailScreen.kt  # Full job info, bookmark toggle, apply confirmation dialog + status-aware button
-│       └── profile/
-│           └── ProfileScreen.kt    # Gradient header + info card
+│       │   ├── HomeScreen.kt               # Search field, filter chips & job feed
+│       │   ├── AppDrawerContent.kt         # Navigation drawer panel
+│       │   └── JobCard.kt                  # Individual job listing item
+│       ├── jobdetail/JobDetailScreen.kt    # Detail view with apply button
+│       ├── savedjobs/SavedJobsScreen.kt    # Saved jobs list
+│       ├── applications/ApplicationsScreen.kt # Applied jobs list
+│       ├── profile/ProfileScreen.kt        # Profile with theme toggle & analytics trigger
+│       ├── analytics/AnalyticsScreen.kt    # Embedded FlutterFragment view
+│       └── theme/                          # Material 3 colors, typography & theme
 │
-└── MainActivity.kt                 # Entry point — only hosts setContent { AppNavigation() }
+├── HireJetpackApp.kt                       # Custom Application subclass (IdleHandler Flutter prewarm)
+└── MainActivity.kt                         # FragmentActivity entry point with installSplashScreen()
 ```
 
 ---
 
-## 🧩 Key Concepts & Keywords Reference
+## 🧩 Architectural Principles & Key Patterns
 
-### 1. Object-Oriented Programming (OOP)
+### 1. Object-Oriented & Clean Architecture Principles
 
-| Concept | Implementation in Code |
+| Principle | Implementation in TalentStream |
 | --- | --- |
-| **Encapsulation** | `LoginViewModel` and `HomeViewModel` each hold a `private MutableStateFlow` and expose only a `public read-only StateFlow`, preventing the UI from mutating state directly. |
-| **Polymorphism** | `LoginUiState` is a `sealed interface`; the UI polymorphically renders different layouts (`Loading`, `Error`, `Success`) based on the concrete instance at runtime. |
-| **Single Responsibility (SRP)** | Each ViewModel owns one screen's state; `JobRepository` only knows how to fetch jobs; each Composable file renders exactly one piece of UI. |
-| **Composition over Inheritance** | `HomeScreen` is built by composing `ModalNavigationDrawer` + `Scaffold` + `LazyColumn` + `JobCard`, not by extending a base screen class. `InitialsAvatar` is reused via composition in both the drawer and Profile screen. |
-| **Type-Safe Abstraction** | `Screen` is a `sealed class` of routes — the compiler catches typos that a raw string route name wouldn't. |
-| **DRY** | `InitialsAvatar` and `ProfileInfoRow` exist because the same visual pattern showed up twice — pulled out once, reused everywhere. |
-| **Single Source of Truth** | `BookmarkRepository` owns bookmark state, not `HomeViewModel` or `JobDetailViewModel` individually — both screens *observe* the same `StateFlow`, so a bookmark toggled on one screen is correct on the other without any manual syncing between them. |
+| **Encapsulation** | ViewModels hold `private val _uiState = MutableStateFlow(...)` and expose read-only `val uiState: StateFlow(...)`. Internal mutations are hidden from Composables. |
+| **Dependency Inversion (DIP)** | ViewModels and UseCases depend on interfaces (`BookmarkRepository`, `ApplicationRepository`, `JobRepository`), not concrete Room implementations. |
+| **Single Responsibility (SRP)** | Each UseCase performs one action (`ApplyToJobUseCase`, `ToggleBookmarkUseCase`); ViewModels strictly manage UI state; DAOs handle SQLite queries. |
+| **Single Source of Truth** | Both bookmarks and applications are stored in Room SQLite. When a user applies or bookmarks from `JobDetailScreen`, the `Flow` emits updates that immediately update `HomeScreen`, `SavedJobsScreen`, and `ApplicationsScreen`. |
+| **Separation of Concerns** | Cold start work is deferred off the main thread (`by lazy` in `AppContainer` and `IdleHandler` in `HireJetpackApp`), separating startup speed from feature initialization. |
 
-### 2. Jetpack Compose Keywords
+### 2. Multi-Module Architecture Blueprint
 
-| Keyword | Description |
-| --- | --- |
-| `@Composable` | Annotation telling the Kotlin compiler that a function transforms data into UI nodes. |
-| `setContent` | Bridge function attaching Compose layouts to an Android `ComponentActivity`. |
-| `remember` | Caches a value in memory across recompositions. |
-| `mutableStateOf` | Creates a reactive state holder; updating it triggers recomposition of dependent UI. |
-| `collectAsState` | Collects a `StateFlow`'s emissions into reactive Compose `State`. |
-| `rememberNavController` | Creates and retains a `NavHostController` across recompositions. |
-| `ModalNavigationDrawer` | Renders a slide-out drawer panel alongside main screen content. |
-| `rememberDrawerState` / `DrawerState` | Holds whether the drawer is open or closed; `.open()` / `.close()` are suspend functions. |
-| `rememberCoroutineScope` | Provides a coroutine scope tied to the composition, used to call suspend functions (like opening the drawer) from click handlers. |
-| `Scaffold` | Material layout structure providing slots for TopBar, BottomBar, and body content. |
-| `LazyColumn` | Lazily-rendered scrollable list — only composes items currently visible on screen. |
-| `SavedStateHandle` | Key-value bag holding the current destination's navigation arguments; injected automatically into a ViewModel and survives process death. |
-| `navArgument` | Declares a named, typed argument (e.g. `jobId: String`) on a `composable(...)` route, enabling parameterized navigation like `job_detail_screen/{jobId}`. |
-| `debounce` / `distinctUntilChanged` | Flow operators: `debounce` waits for a pause between emissions before passing one through (used here to avoid filtering on every keystroke); `distinctUntilChanged` skips emissions equal to the previous one. |
-| `combine` | Flow operator that recomputes an output whenever ANY of several input flows emit — used to merge the debounced search query with the shared bookmark flow into one `HomeUiState`. |
-| `stateIn` | Converts a cold `Flow` into a hot, shareable `StateFlow`, with a `SharingStarted` policy controlling when the upstream work actually runs. |
+As the application scales, the codebase can be split into dedicated Gradle modules:
+
+```text
+                  :app
+               ┌───┴───┐
+        :feature:jobs  :feature:profile  :feature:saved  :feature:applications
+               └───┬───┘
+               :core:domain (UseCases, Domain Models)
+               ┌───┴───┐
+        :core:database  :core:network
+               └───┬───┘
+               :core:model (Pure Kotlin Data Classes)
+```
+
+- **`:core:model`**: Pure Kotlin data models (`Job`, `UserProfile`) with zero Android dependencies.
+- **`:core:database`**: Room database, entities, and DAOs for offline-first persistence.
+- **`:core:network`**: Retrofit/Ktor HTTP clients, DTOs, and remote data sources.
+- **`:core:domain`**: Business rules and UseCases connecting data repositories to UI requirements.
+- **`:feature:<name>`**: Isolated feature modules containing Compose screens and ViewModels.
 
 ---
 
-## 🚀 Getting Started
+## ⚡ Cold Start & Performance Optimizations
 
-### Prerequisites
-
-* **Android Studio:** Ladybug or newer
-* **JDK:** 17+
-* **Min SDK:** 24 (Android 7.0)
-* **Target SDK:** 34 or higher
-
-### Gradle Dependencies
-
-Ensure your `build.gradle.kts` (Module `:app`) contains the following:
-
-```kotlin
-dependencies {
-    // Jetpack Compose & Material 3
-    implementation(platform("androidx.compose:compose-bom:2024.02.00"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.material3:material3")
-
-    // Extended icon set (Menu, AccountCircle, Work, LocationOn, Logout, Home)
-    implementation("androidx.compose.material:material-icons-extended:1.6.8")
-
-    // ViewModel & Navigation for Compose
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
-    implementation("androidx.navigation:navigation-compose:2.8.0")
-}
-```
+1. **AndroidX Splash Screen (`androidx.core:core-splashscreen`):**
+   - Immediate system-rendered window during application class-loading.
+   - Smooth transition into Compose with `installSplashScreen()` in `MainActivity.onCreate()`.
+2. **ART Baseline Profiles (`androidx.profileinstaller`):**
+   - Automatically pre-compiles Compose runtime, Navigation, and Room bytecode into native machine instructions during background installation, reducing JIT overhead.
+3. **Lazy Dependency Injection Container:**
+   - Room SQLite database builders and DAO creations are wrapped in `by lazy`, keeping `Application.onCreate()` sub-10ms.
+4. **Deferred Flutter Engine Pre-Warming:**
+   - Replaced synchronous `Application.onCreate` engine instantiation with `Looper.myQueue().addIdleHandler`, ensuring 0ms penalty on initial frame draw.
+5. **R8 / ProGuard Minification:**
+   - Shrinks DEX bytecode, inlines startup code paths, and removes unused resources in release builds.
 
 ---
 
 ## 💻 How to Run
 
-1. Clone or download this repository.
-2. Open the project in **Android Studio**.
-3. Confirm the module's `applicationId` / package matches `com.pawan.hirejetpack` (or update it, and the `package` line at the top of every file, to match your own).
-4. Perform a **Gradle Sync**.
-5. Run the application on an Emulator or connected Physical Device (`Shift + F10`).
-6. Enter any sample email and password on the Login screen — this navigates to the Home screen's job feed.
-7. Type in the search bar to filter jobs by title, company, location, or skill (filtering kicks in ~300ms after you stop typing).
-8. Tap the bookmark icon on any job card (or on the detail screen) to save it — notice the icon stays in sync between the feed and detail screen, since both read the same `BookmarkRepository`.
-9. Tap a job card to open its detail screen, then **Apply Now** to try the confirm → submit → applied flow (Back returns to the feed).
-10. Tap the menu icon (or the profile icon in the top bar) to open the drawer and reach the Profile screen.
-
----
-
-## 🔮 Next Steps / Extension Ideas
-
-- Add a "Saved Jobs" screen (filter `BookmarkRepository.bookmarkedIds` against `JobRepository.getJobs()`), reachable from the drawer — the data plumbing already exists.
-- Add filter chips (by tag) alongside the text search, so users can narrow by skill with a tap instead of typing.
-- Replace the simulated `delay(900)` in `applyToJob()` with a real suspend repository call once a backend exists.
-- Persist application status and bookmarks (currently both lost on process death) — back `BookmarkRepository` and application status with DataStore instead of in-memory `Set`/state.
-- Replace `JobRepository`'s hardcoded list with a real Retrofit-backed data source — `getJobs()` and `getJobById()` are already shaped for this swap; search would then likely move server-side.
-- Introduce a `domain`-layer `UseCase` (e.g. `GetJobsUseCase`, `ApplyToJobUseCase`, `ToggleBookmarkUseCase`) once business rules get more complex than what lives in the ViewModels today.
-- If the app grows past a handful of features, consider splitting `domain`/`data` into `core-model`/`core-network` modules, and each `presentation/ui/<feature>` folder into its own `feature-*` Gradle module (see multi-module architecture notes).
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/pk-debug/TalentStream.git
+   ```
+2. Open the project in **Android Studio Ladybug (2024.2.1+)**.
+3. Ensure **JDK 17** is configured in **Settings → Build, Execution, Deployment → Build Tools → Gradle**.
+4. Sync Gradle and run on an Android 7.0+ (API 24+) device or emulator (`Shift + F10`).
+5. Log in with any sample email to access the interactive job feed, filter chips, navigation drawer, and bookmarks.

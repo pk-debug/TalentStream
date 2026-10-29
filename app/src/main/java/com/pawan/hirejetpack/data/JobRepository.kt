@@ -3,29 +3,35 @@ package com.pawan.hirejetpack.data
 import com.pawan.hirejetpack.domain.Job
 
 /**
- * [JobRepository] — mock data source, shaped like a real one.
- *
- * Staff note: this function signature is intentionally what a real
- * repository would expose (e.g. `suspend fun getJobs(): List<Job>` backed
- * by Retrofit). Swapping the body for a network call later does not
- * require touching the ViewModel or UI at all — that's the Dependency
- * Inversion Principle (the "D" in SOLID) paying off in practice, not just
- * in theory.
+ * [JobRepository] — abstraction for fetching job listings.
+ * Enables seamlessly swapping local mock data with a real Retrofit REST API.
  */
-object JobRepository {
+interface JobRepository {
+    fun getJobs(): List<Job>
+    fun getJobById(id: String): Job?
 
-    /**
-     * Looks up a single job by id — used by the detail screen.
-     * Returns null if not found, so callers must handle the "missing" case
-     * explicitly rather than assuming success.
-     */
-    fun getJobById(id: String): Job? = getJobs().find { it.id == id }
+    companion object : JobRepository {
+        private val defaultImpl = DefaultJobRepository()
 
-    fun getJobs(): List<Job> = listOf(
+        override fun getJobs(): List<Job> = defaultImpl.getJobs()
+        override fun getJobById(id: String): Job? = defaultImpl.getJobById(id)
+    }
+}
+
+/**
+ * [DefaultJobRepository] — provides job data, structured ready for Retrofit API service.
+ */
+class DefaultJobRepository : JobRepository {
+
+    private val sampleJobs = listOf(
         Job("1", "Android Engineer", "Zenith Labs", "Bengaluru", "₹18–28 LPA", listOf("Kotlin", "Compose")),
         Job("2", "Staff Mobile Engineer", "Northwind", "Remote", "₹40–55 LPA", listOf("KMP", "Architecture")),
         Job("3", "Kotlin Multiplatform Dev", "OrbitPay", "Hyderabad", "₹22–32 LPA", listOf("KMP", "iOS")),
         Job("4", "Senior Android Developer", "Trailhead", "Pune", "₹25–35 LPA", listOf("Coroutines", "Hilt")),
         Job("5", "Android Team Lead", "Vertex", "Remote", "₹45–60 LPA", listOf("Leadership", "Compose")),
     )
+
+    override fun getJobs(): List<Job> = sampleJobs
+
+    override fun getJobById(id: String): Job? = sampleJobs.find { it.id == id }
 }

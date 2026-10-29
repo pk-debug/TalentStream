@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
@@ -17,22 +19,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pawan.hirejetpack.domain.UserProfile
 import com.pawan.hirejetpack.presentation.ui.components.InitialsAvatar
+import com.pawan.hirejetpack.presentation.ui.main.BottomNavItem
 
 /**
- * [AppDrawerContent] — what's inside the slide-out panel.
- *
- * Noob note: [ModalDrawerSheet] is just a pre-styled Column with the right
- * width/elevation for a drawer — everything inside it is composed the
- * same way as any other screen.
- * Staff note: showing a profile summary (avatar + name) at the top of the
- * drawer is a standard pattern (Gmail, LinkedIn) — it reassures the user
- * which account they're in before they navigate anywhere else.
+ * [AppDrawerContent] — slide-out drawer panel.
+ * Provides direct access to Job Feed, Saved Jobs, Applications, Profile, and Logout.
  */
 @Composable
 fun AppDrawerContent(
     user: UserProfile?,
-    onProfileClick: () -> Unit,
-    onHomeClick: () -> Unit,
+    selectedTab: BottomNavItem,
+    onTabSelected: (BottomNavItem) -> Unit,
     onLogoutClick: () -> Unit
 ) {
     ModalDrawerSheet {
@@ -73,15 +70,27 @@ fun AppDrawerContent(
 
             NavigationDrawerItem(
                 icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                label = { Text("Home") },
-                selected = true,
-                onClick = onHomeClick
+                label = { Text("Home / Job Feed") },
+                selected = selectedTab == BottomNavItem.Home,
+                onClick = { onTabSelected(BottomNavItem.Home) }
+            )
+            NavigationDrawerItem(
+                icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
+                label = { Text("Saved Jobs") },
+                selected = selectedTab == BottomNavItem.Saved,
+                onClick = { onTabSelected(BottomNavItem.Saved) }
+            )
+            NavigationDrawerItem(
+                icon = { Icon(Icons.Filled.Assignment, contentDescription = null) },
+                label = { Text("Applications") },
+                selected = selectedTab == BottomNavItem.Applications,
+                onClick = { onTabSelected(BottomNavItem.Applications) }
             )
             NavigationDrawerItem(
                 icon = { Icon(Icons.Filled.AccountCircle, contentDescription = null) },
                 label = { Text("Profile") },
-                selected = false,
-                onClick = onProfileClick
+                selected = selectedTab == BottomNavItem.Profile,
+                onClick = { onTabSelected(BottomNavItem.Profile) }
             )
 
             Spacer(modifier = Modifier.weight(1f))

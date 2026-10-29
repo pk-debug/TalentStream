@@ -29,10 +29,15 @@ import androidx.room.RoomDatabase
  * @Singleton does, written by hand" is a much stronger interview answer
  * than reciting the annotation's definition.
  */
-@Database(entities = [BookmarkEntity::class], version = 1, exportSchema = false)
+@Database(
+    entities = [BookmarkEntity::class, ApplicationEntity::class],
+    version = 2,
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun bookmarkDao(): BookmarkDao
+    abstract fun applicationDao(): ApplicationDao
 
     companion object {
         @Volatile
@@ -44,7 +49,10 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "hirejetpack.db"
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { INSTANCE = it }
             }
         }
     }
